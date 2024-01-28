@@ -13,10 +13,14 @@
     "grpc": "^1.24.11",
     "grpc_tools_node_protoc_ts": "^5.3.3",
     "grpc-tools": "^1.12.4",
+    "inquirer": "^9.2.13",
+    "prompt-sync": "^4.2.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/prompt-sync": "^4.2.3",
     "nodemon": "^3.0.3"
   }
 }

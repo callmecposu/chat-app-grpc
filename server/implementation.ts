@@ -1,0 +1,111 @@
+import { handleServerStreamingCall, handleUnaryCall } from "grpc";
+import { IChatServiceServer } from "./protos/out/chat/chat_grpc_pb";
+import {
+    Message,
+    SendMessageResponse,
+    SendMessageRequest,
+    LeaveChatRoomRequest,
+    LeaveChatRoomResponse,
+    JoinChatRoomRequest,
+} from "./protos/out/chat/chat_pb";
+import grpc from "grpc";
+
+type User = {
+    id: number;
+    username: string;
+    stream: grpc.ServerWritableStream<JoinChatRoomRequest, Message> | null;
+};
+
+type ChatRoom = {
+    id: number;
+    users: User[];
+};
+
+let chatRooms: ChatRoom[] = [
+    { id: 1, users: [] },
+    { id: 2, users: [] },
+    { id: 3, users: [] },
+];
+
+export class ChatService implements IChatServiceServer {
+    joinChatRoom: handleServerStreamingCall<JoinChatRoomRequest, Message> = (
+        call
+    ) => {
+        const request = call.request;
+        // add the user to the chatroom
+        chatRooms
+            .find((x) => x.id == request.getChatRoomId())
+            ?.users.push({
+                id: request.getUserId(),
+                username: request.getUsername(),
+                stream: call,
+            });
+        // notify all the users in the chatroom of the new participant
+        chatRooms
+            .find((x) => x.id == request.getChatRoomId())
+            ?.users.forEach((user) => {
+                const msg = new Message();
+                msg.setUsername("Server");
+                msg.setContent(
+                    `${request.getUsername()} joined chat room #${request.getChatRoomId()}`
+                );
+                user.stream?.write(msg);
+            });
+    };
+
+    sendMessage: handleUnaryCall<SendMessageRequest, SendMessageResponse> = (
+        call,
+        callback
+    ) => {
+        const request = call.request;
+        try {
+            // send the message to all the clients in the chatroom
+            chatRooms
+                .find((x) => x.id == request.getChatRoomId())
+                ?.users.forEach((user) => {
+                    user.stream?.write(request.getMsg());
+                });
+            console.log(`msg sent from ${request.getMsg()?.getUsername()} in #${request.getChatRoomId()}`)
+            const response = new SendMessageResponse();
+            response.setSuccess(true);
+            callback(null, response);
+        } catch (err) {
+            console.log(err)
+            callback(
+                {
+                    code: grpc.status.INTERNAL,
+                    name: "Error",
+                    message: (err as any).message,
+                },
+                null
+            );
+        }
+    };
+
+    leaveChatRoom: handleUnaryCall<
+        LeaveChatRoomRequest,
+        LeaveChatRoomResponse
+    > = (call, callback) => {
+        const request = call.request;
+        console.log('leave req: ', request.toObject())
+        // remove the user from the chat room
+        const oldUsers = (
+            chatRooms.find((x) => x.id == request.getChatRoomId()) as ChatRoom
+        ).users;
+        (
+            chatRooms.find((x) => x.id == request.getChatRoomId()) as ChatRoom
+        ).users = oldUsers.filter((x) => x.id != request.getUserId());
+        console.log(chatRooms.find(x => x.id == request.getChatRoomId())?.users)
+        // notify all the clients in the chatroom
+        chatRooms
+            .find((x) => x.id == request.getChatRoomId())
+            ?.users.forEach((user) => {
+                const msg = new Message();
+                msg.setUsername("Server");
+                msg.setContent(`${request.getUsername()} left chat room #${request.getChatRoomId()}`)
+                user.stream?.write(msg);
+            });
+        console.log(`User ${request.getUserId()} left #${request.getChatRoomId()}`)
+        callback(null, new LeaveChatRoomResponse())
+    };
+}

@@ -1,0 +1,38 @@
+syntax = "proto3";
+package chatservice;
+
+service ChatService {
+    rpc JoinChatRoom(JoinChatRoomRequest) returns (stream Message);
+    rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+    rpc LeaveChatRoom(LeaveChatRoomRequest) returns (LeaveChatRoomResponse);
+}
+
+message JoinChatRoomRequest {
+    int32 user_id = 1;
+    string username = 2;
+    int32 chat_room_id = 3;
+}
+
+message Message {
+    string username = 1;
+    string content = 2;
+}
+
+message SendMessageRequest {
+    int32 chat_room_id = 1;
+    Message msg = 2;
+}
+
+message SendMessageResponse {
+    bool success = 1;
+}
+
+message LeaveChatRoomRequest {
+    int32 user_id = 1;
+    string username = 2;
+    int32 chat_room_id = 3;
+}
+
+message LeaveChatRoomResponse {
+    bool success = 1;
+}
