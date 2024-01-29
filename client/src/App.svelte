@@ -1,6 +1,11 @@
 <script>
     import { ChatServiceClient } from "./protos/out/chat/chat_grpc_web_pb";
-    import { JoinChatRoomRequest, SendMessageRequest, Message, LeaveChatRoomRequest } from "./protos/out/chat/chat_pb";
+    import {
+        JoinChatRoomRequest,
+        SendMessageRequest,
+        Message,
+        LeaveChatRoomRequest,
+    } from "./protos/out/chat/chat_pb";
 
     var grpcClient = new ChatServiceClient("http://localhost:13007");
 
@@ -12,6 +17,12 @@
 
     let msgContent;
 
+    const handleEnterKeyPress = (e) => {
+        if (e.key == "Enter") {
+            sendMessage();
+        }
+    };
+
     const joinChatRoom = () => {
         let joinChatRequest = new JoinChatRoomRequest();
         joinChatRequest.setUserId(userId);
@@ -21,43 +32,50 @@
         stream.on("data", (msg) => {
             document.querySelector("#chat").innerHTML +=
                 `<p class="m-2"><span class="text-primary font-semibold">${msg.getUsername()}:</span> <span>${msg.getContent()}</span></p>`;
+            document
+                .querySelector("#chat")
+                .scrollTo({ top: 9999999, behavior: "smooth" });
         });
         console.log("joined chatroom: ", stream);
+        document.addEventListener("keydown", handleEnterKeyPress);
     };
 
-	const sendMessage = () => {
-		let sendMsgRequest = new SendMessageRequest()
-		sendMsgRequest.setChatRoomId(chatRoomId)
-		let msg = new Message()
-		msg.setUsername(username)
-		msg.setContent(msgContent)
-		sendMsgRequest.setMsg(msg)
-		grpcClient.sendMessage(sendMsgRequest, {}, (err, resp) => {
-			if (err){
-				console.log('err while sending message: ', err)
-			} else {
-				console.log('msg sent successfully')
-				msgContent = null
-			}
-		})
-	}
+    const sendMessage = () => {
+        if (msgContent && msgContent.length > 0) {
+            let sendMsgRequest = new SendMessageRequest();
+            sendMsgRequest.setChatRoomId(chatRoomId);
+            let msg = new Message();
+            msg.setUsername(username);
+            msg.setContent(msgContent);
+            sendMsgRequest.setMsg(msg);
+            grpcClient.sendMessage(sendMsgRequest, {}, (err, resp) => {
+                if (err) {
+                    console.log("err while sending message: ", err);
+                } else {
+                    console.log("msg sent successfully");
+                    msgContent = null;
+                }
+            });
+        }
+    };
 
-	const leaveChatRoom = () => {
-		let leaveChatRequest = new LeaveChatRoomRequest()
-		leaveChatRequest.setUserId(userId)
-		leaveChatRequest.setUsername(username)
-		leaveChatRequest.setChatRoomId(chatRoomId)
-		grpcClient.leaveChatRoom(leaveChatRequest, {}, (err, resp) => {
-			if (err){
-				console.log('error while leaving chat room: ', err)
-			} else {
-				userId = null
-				username = null
-				chatRoomId = null
-				stream = null
-			}
-		})
-	}
+    const leaveChatRoom = () => {
+        let leaveChatRequest = new LeaveChatRoomRequest();
+        leaveChatRequest.setUserId(userId);
+        leaveChatRequest.setUsername(username);
+        leaveChatRequest.setChatRoomId(chatRoomId);
+        grpcClient.leaveChatRoom(leaveChatRequest, {}, (err, resp) => {
+            if (err) {
+                console.log("error while leaving chat room: ", err);
+            } else {
+                userId = null;
+                username = null;
+                chatRoomId = null;
+                stream = null;
+                document.removeEventListener("keydown", handleEnterKeyPress);
+            }
+        });
+    };
 </script>
 
 <main>
@@ -72,51 +90,59 @@
                     class="card shrink-0 w-full max-w-sm shadow-2xl bg-base-100"
                 >
                     <div class="card-body">
-                        <div class="form-control">
-                            <label class="label" for="userId">
-                                <span class="label-text">User ID</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="userId"
-                                placeholder="user id"
-                                class="input input-bordered"
-                                bind:value={userId}
-                                required
-                            />
-                        </div>
-                        <div class="form-control">
-                            <label class="label" for="username">
-                                <span class="label-text">Username</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="username"
-                                placeholder="username"
-                                class="input input-bordered"
-                                bind:value={username}
-                                required
-                            />
-                        </div>
-                        <div class="form-control">
-                            <label class="label" for="chatRoomId">
-                                <span class="label-text">Chat Room Number</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="chatRoomId"
-                                placeholder="chat room id"
-                                class="input input-bordered"
-                                bind:value={chatRoomId}
-                                required
-                            />
-                        </div>
-                        <div class="form-control mt-6">
-                            <button
-                                class="btn btn-primary"
-                                on:click={joinChatRoom}>Join</button
-                            >
-                        </div>
+                        <form
+                            on:submit={(e) => {
+                                e.preventDefault();
+                            }}
+                        >
+                            <div class="form-control">
+                                <label class="label" for="userId">
+                                    <span class="label-text">User ID</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="userId"
+                                    placeholder="user id"
+                                    class="input input-bordered"
+                                    bind:value={userId}
+                                    required
+                                />
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="username">
+                                    <span class="label-text">Username</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="username"
+                                    placeholder="username"
+                                    class="input input-bordered"
+                                    bind:value={username}
+                                    required
+                                />
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="chatRoomId">
+                                    <span class="label-text"
+                                        >Chat Room Number</span
+                                    >
+                                </label>
+                                <input
+                                    type="text"
+                                    name="chatRoomId"
+                                    placeholder="chat room id"
+                                    class="input input-bordered"
+                                    bind:value={chatRoomId}
+                                    required
+                                />
+                            </div>
+                            <div class="form-control mt-6">
+                                <button
+                                    class="btn btn-primary"
+                                    on:click={joinChatRoom}>Join</button
+                                >
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -128,17 +154,25 @@
         ></div>
         <div class="m-4 flex">
             <div class=" w-full me-4">
-                <input
-                    type="text"
-                    placeholder="Type here"
-                    class="input input-bordered input-primary w-full"
-					bind:value={msgContent}
-                />
+                <form
+                    on:submit={(e) => {
+                        e.preventDefault();
+                    }}
+                >
+                    <input
+                        type="text"
+                        placeholder="Type here"
+                        class="input input-bordered input-primary w-full"
+                        bind:value={msgContent}
+                    />
+                </form>
             </div>
             <button class="btn btn-primary" on:click={sendMessage}>Send</button>
         </div>
         <div class="m-4">
-            <button class="btn btn-error w-full" on:click={leaveChatRoom}>Leave Chat Room</button>
+            <button class="btn btn-error w-full" on:click={leaveChatRoom}
+                >Leave Chat Room</button
+            >
         </div>
     {/if}
 </main>

@@ -107,6 +107,7 @@ export class ChatService implements IChatServiceServer {
                 // remove the user from the chat room
                 for (let j = 0; j < chatRooms[i].users.length; j++) {
                     if (chatRooms[i].users[j].id == request.getUserId()) {
+                        console.log('found user!')
                         chatRooms[i].users[j].stream?.end();
                         chatRooms[i].users.splice(j, 1);
                         break;
